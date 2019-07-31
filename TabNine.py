@@ -11,6 +11,8 @@ AUTOCOMPLETE_CHAR_LIMIT = 100000
 MAX_RESTARTS = 10
 SETTINGS_PATH = 'TabNine.sublime-settings'
 PREFERENCES_PATH = 'Preferences.sublime-settings'
+CONFIG_DIR = os.path.dirname(os.path.abspath(__file__))
+DUMMY_SOURCE = os.path.join(CONFIG_DIR, 'dummy_source.txt')
 
 GLOBAL_IGNORE_EVENTS = False
 
@@ -267,7 +269,7 @@ class TabNineListener(sublime_plugin.EventListener):
             "Autocomplete": {
                 "before": self.before,
                 "after": self.after,
-                "filename": view.file_name(),
+                "filename": view.file_name() or DUMMY_SOURCE,
                 "region_includes_beginning": self.region_includes_beginning,
                 "region_includes_end": self.region_includes_end,
                 "max_num_results": max_num_results,
