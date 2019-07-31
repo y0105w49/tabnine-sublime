@@ -186,7 +186,7 @@ class TabNineListener(sublime_plugin.EventListener):
         if view.window() is None:
             return
         view = view.window().active_view()
-        if view.is_scratch() or GLOBAL_IGNORE_EVENTS:
+        if GLOBAL_IGNORE_EVENTS:
             return
         (
             new_before,
@@ -276,11 +276,11 @@ class TabNineListener(sublime_plugin.EventListener):
         response = self.request(request)
         if response is None or not self.autocompleting:
             return
-        self.tab_index = 0
+        self.tab_index = None
         self.old_prefix = None
         self.expected_prefix = response["old_prefix"]
         self.choices = response["results"]
-        max_choices = 9
+        max_choices = 10
         if max_num_results is not None:
             max_choices = min(max_choices, max_num_results)
         self.choices = self.choices[:max_choices]
@@ -290,18 +290,19 @@ class TabNineListener(sublime_plugin.EventListener):
         max_len = max([len(x) for x in to_show] or [0])
         show_detail = self.get_settings().get("detail")
         for i in range(len(to_show)):
-            padding = max_len - len(to_show[i]) + 2
-            if i == 0:
-                annotation = "&nbsp;" * 2 + "Tab"
-            elif i < 9:
-                annotation = "Tab+" + str(i + 1)
+            padding = max_len - len(to_show[i])
+            if i <= 1:
+                annotation = "Tab" + "+Tab" * i
+            elif i <= 9:
+                annotation = "Tab+" + str(i)
             else:
                 annotation = ""
+            detail_padding = 3 + 4 * 1 - len(annotation) + 2
             annotation = "<i>" + annotation + "</i>"
             choice = self.choices[i]
             if show_detail and 'detail' in choice and isinstance(choice['detail'], str):
-                annotation += escape("  " + choice['detail'].replace('\n', ' '))
-            with_padding = escape(to_show[i] + " " * padding)
+                annotation += escape(" " * detail_padding + choice['detail'].replace('\n', ' '))
+            with_padding = escape(to_show[i] + " " * padding) + "&nbsp;" * 2
             to_show[i] = with_padding + annotation
         if "user_message" in response:
             for line in response["user_message"]:
@@ -316,7 +317,7 @@ class TabNineListener(sublime_plugin.EventListener):
             self.seen_changes = False
 
     def insert_completion(self, view, choice_index): #pylint: disable=W0613
-        self.tab_index = (choice_index + 1) % len(self.choices)
+        self.tab_index = choice_index
         a, b = self.substitute_interval
         choice = self.choices[choice_index]
         new_prefix = choice["new_prefix"]
@@ -350,24 +351,23 @@ class TabNineListener(sublime_plugin.EventListener):
     def on_text_command(self, view, command_name, args):
         if command_name == "tab_nine" and "num" in args:
             num = args["num"]
-            choice_index = num - 1
+            choice_index = num
             if choice_index < 0 or choice_index >= len(self.choices):
                 return None
             result = self.insert_completion(view, choice_index)
             self.choices = []
             return result
         if command_name in ["insert_best_completion", "tab_nine_leader_key"] and len(self.choices) >= 1:
-            return self.insert_completion(view, self.tab_index)
+            index = 0 if self.tab_index is None or self.tab_index == len(self.choices) - 1 else self.tab_index + 1
+            return self.insert_completion(view, index)
         if command_name == "tab_nine_reverse_leader_key" and len(self.choices) >= 1:
-            index = (self.tab_index - 2 + len(self.choices)) % len(self.choices)
+            index = len(self.choices) - 1 if self.tab_index is None or self.tab_index == 0 else self.tab_index - 1
             return self.insert_completion(view, index)
 
     def on_query_context(self, view, key, operator, operand, match_all): #pylint: disable=W0613
         if key == "tab_nine_choice_available":
             assert operator == sublime.OP_EQUAL
-            if operand == 1:
-                return False # disable Tab+1
-            return (not self.popup_is_ours) and operand - 1 < len(self.choices)
+            return (not self.popup_is_ours) and 0 <= operand < len(self.choices)
         if key == "tab_nine_leader_key_available":
             assert operator == sublime.OP_EQUAL
             return (self.choices != [] and view.is_popup_visible()) == operand
