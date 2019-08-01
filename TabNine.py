@@ -12,7 +12,10 @@ MAX_RESTARTS = 10
 SETTINGS_PATH = 'TabNine.sublime-settings'
 PREFERENCES_PATH = 'Preferences.sublime-settings'
 CONFIG_DIR = os.path.dirname(os.path.abspath(__file__))
-DUMMY_SOURCE = os.path.join(CONFIG_DIR, 'dummy_source.txt')
+DUMMY_SOURCES = {scope: os.path.join(CONFIG_DIR, 'fake_project', scope + '.' + ext) for scope, ext in {
+    'source.python': 'py',
+    'source.c++': 'rb',
+}.items()}
 
 GLOBAL_IGNORE_EVENTS = False
 
@@ -265,11 +268,17 @@ class TabNineListener(sublime_plugin.EventListener):
         if not self.autocompleting:
             return
         max_num_results = self.max_num_results()
+
+        scopes = view.scope_name(view.sel()[0].begin()).split()
+        file_name = view.file_name()
+        for scope in scopes:
+            file_name = DUMMY_SOURCES.get(scope, file_name)
+
         request = {
             "Autocomplete": {
                 "before": self.before,
                 "after": self.after,
-                "filename": view.file_name() or DUMMY_SOURCE,
+                "filename": file_name,
                 "region_includes_beginning": self.region_includes_beginning,
                 "region_includes_end": self.region_includes_end,
                 "max_num_results": max_num_results,
