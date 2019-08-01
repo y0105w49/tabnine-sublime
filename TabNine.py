@@ -321,7 +321,8 @@ class TabNineListener(sublime_plugin.EventListener):
         to_show = "<br>".join(to_show)
 
         if self.choices == []:
-            view.hide_popup()
+            if self.popup_is_ours:
+                view.hide_popup()
         else:
             my_show_popup(view, to_show, substitute_begin)
             self.popup_is_ours = True
