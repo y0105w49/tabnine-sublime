@@ -291,7 +291,7 @@ class TabNineListener(sublime_plugin.EventListener):
         self.old_prefix = None
         self.expected_prefix = response["old_prefix"]
         self.choices = response["results"]
-        max_choices = 10
+        max_choices = 9
         if max_num_results is not None:
             max_choices = min(max_choices, max_num_results)
         self.choices = self.choices[:max_choices]
@@ -304,8 +304,8 @@ class TabNineListener(sublime_plugin.EventListener):
             padding = max_len - len(to_show[i])
             if i <= 1:
                 annotation = "Tab" + "+Tab" * i
-            elif i <= 9:
-                annotation = "Tab+" + str(i)
+            elif i <= 8:
+                annotation = "Tab+" + str(i+1)
             else:
                 annotation = ""
             detail_padding = 3 + 4 * 1 - len(annotation) + 2
@@ -363,7 +363,7 @@ class TabNineListener(sublime_plugin.EventListener):
     def on_text_command(self, view, command_name, args):
         if command_name == "tab_nine" and "num" in args:
             num = args["num"]
-            choice_index = num
+            choice_index = num - 1
             if choice_index < 0 or choice_index >= len(self.choices):
                 return None
             result = self.insert_completion(view, choice_index)
@@ -379,7 +379,7 @@ class TabNineListener(sublime_plugin.EventListener):
     def on_query_context(self, view, key, operator, operand, match_all): #pylint: disable=W0613
         if key == "tab_nine_choice_available":
             assert operator == sublime.OP_EQUAL
-            return (not self.popup_is_ours) and 0 <= operand < len(self.choices)
+            return (not self.popup_is_ours) and 1 <= operand <= len(self.choices)
         if key == "tab_nine_leader_key_available":
             assert operator == sublime.OP_EQUAL
             return (self.choices != [] and view.is_popup_visible()) == operand
