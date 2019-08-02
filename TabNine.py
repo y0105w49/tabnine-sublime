@@ -6,17 +6,13 @@ import json
 import os
 import stat
 import webbrowser
+import yaml
 
 AUTOCOMPLETE_CHAR_LIMIT = 100000
 MAX_RESTARTS = 10
 SETTINGS_PATH = 'TabNine.sublime-settings'
 PREFERENCES_PATH = 'Preferences.sublime-settings'
 CONFIG_DIR = os.path.dirname(os.path.abspath(__file__))
-DUMMY_SOURCES = {scope: os.path.join(CONFIG_DIR, 'fake_project', scope + '.' + ext) for scope, ext in {
-    'source.python': 'py',
-    'source.c++': 'rb',
-}.items()}
-
 GLOBAL_IGNORE_EVENTS = False
 
 class TabNineCommand(sublime_plugin.TextCommand):
@@ -94,6 +90,7 @@ class TabNineListener(sublime_plugin.EventListener):
         self.old_prefix = None
         self.popup_is_ours = False
         self.seen_changes = False
+        self.syntax_ext_map = {}
 
         self.tab_index = 0
         self.old_prefix = None
@@ -258,6 +255,19 @@ class TabNineListener(sublime_plugin.EventListener):
     def get_settings(self):
         return sublime.load_settings(SETTINGS_PATH)
 
+    def get_dummy_file(self, view):
+        syntax_file = view.settings().get('syntax')
+        if syntax_file not in self.syntax_ext_map:
+            self.syntax_ext_map[syntax_file] = None
+            try:
+                syntax_yaml = yaml.safe_load(sublime.load_resource(syntax_file))
+                extension = syntax_yaml['file_extensions'][0]
+                dummy_file = os.path.join(CONFIG_DIR, 'fake_project', 'foo.' + extension)
+                self.syntax_ext_map[syntax_file] = dummy_file
+            except Exception as e:
+                print(e)
+        return self.syntax_ext_map[syntax_file]
+
     def max_num_results(self):
         return self.get_settings().get("max_num_results")
 
@@ -269,16 +279,11 @@ class TabNineListener(sublime_plugin.EventListener):
             return
         max_num_results = self.max_num_results()
 
-        scopes = view.scope_name(view.sel()[0].begin()).split()
-        file_name = view.file_name()
-        for scope in scopes:
-            file_name = DUMMY_SOURCES.get(scope, file_name)
-
         request = {
             "Autocomplete": {
                 "before": self.before,
                 "after": self.after,
-                "filename": file_name,
+                "filename": view.file_name() or self.get_dummy_file(view),
                 "region_includes_beginning": self.region_includes_beginning,
                 "region_includes_end": self.region_includes_end,
                 "max_num_results": max_num_results,
