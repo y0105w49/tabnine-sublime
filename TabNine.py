@@ -13,6 +13,7 @@ MAX_RESTARTS = 10
 SETTINGS_PATH = 'TabNine.sublime-settings'
 PREFERENCES_PATH = 'Preferences.sublime-settings'
 CONFIG_DIR = os.path.dirname(os.path.abspath(__file__))
+
 GLOBAL_IGNORE_EVENTS = False
 
 class TabNineCommand(sublime_plugin.TextCommand):
@@ -265,7 +266,7 @@ class TabNineListener(sublime_plugin.EventListener):
                 dummy_file = os.path.join(CONFIG_DIR, 'fake_project', 'foo.' + extension)
                 self.syntax_ext_map[syntax_file] = dummy_file
             except Exception as e:
-                print(e)
+                print('Failed to get extension for syntax file %s:' % syntax_file, e)
         return self.syntax_ext_map[syntax_file]
 
     def max_num_results(self):
@@ -278,7 +279,6 @@ class TabNineListener(sublime_plugin.EventListener):
         if not self.autocompleting:
             return
         max_num_results = self.max_num_results()
-
         request = {
             "Autocomplete": {
                 "before": self.before,
